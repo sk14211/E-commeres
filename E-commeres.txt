@@ -1,0 +1,61 @@
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+import numpy as np
+
+# Example item data
+data = {
+    'item_id': [1, 2, 3, 4, 5],
+    'description': [
+        'Smartphone with 4GB RAM and 64GB storage',
+        'Laptop with 8GB RAM and 512GB SSD',
+        'Smartwatch with heart rate monitor and GPS',
+        'Smartphone with 6GB RAM and 128GB storage',
+        'Laptop with 16GB RAM and 1TB SSD'
+    ]
+}
+
+df = pd.DataFrame(data)
+
+# Compute TF-IDF matrix
+tfidf_vectorizer = TfidfVectorizer()
+tfidf_matrix = tfidf_vectorizer.fit_transform(df['description'])
+
+# Compute similarity matrix
+cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+# Function to recommend items with dynamic threshold
+def recommend_items(item_id, top_n=5, threshold=0.1):
+    # Get the index of the item_id
+    idx = df.index[df['item_id'] == item_id].tolist()[0]
+    
+    # Get pairwise similarity scores
+    sim_scores = list(enumerate(cosine_sim[idx]))
+    
+    # Sort by similarity score
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+    
+    # Filter out items below the similarity threshold
+    sim_scores = [score for score in sim_scores if score[1] > threshold]
+    
+    # Get the scores for the top_n most similar items
+    sim_scores = sim_scores[1:top_n+1]  # Skip the first item (itself)
+    
+    # Get the item indices
+    item_indices = [i[0] for i in sim_scores]
+    
+    # Return the item details
+    return df.iloc[item_indices]
+
+# Function to print recommendations
+def print_recommendations(item_id, top_n=5, threshold=0.1):
+    recommendations = recommend_items(item_id, top_n, threshold)
+    if recommendations.empty:
+        print(f"No recommendations found for item {item_id} based on the current threshold.")
+    else:
+        print(f"Recommended items for item {item_id}:")
+        for _, row in recommendations.iterrows():
+            print(f"Item ID: {row['item_id']}, Description: {row['description']}")
+
+# Example recommendation
+print_recommendations(1)
